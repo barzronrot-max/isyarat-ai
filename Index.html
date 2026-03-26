@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penerjemah Isyarat AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <style>
+        body { margin: 0; background: #000; color: white; font-family: sans-serif; overflow: hidden; }
+        video { transform: scaleX(-1); width: 100vw; height: 100vh; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; transform: scaleX(-1); object-fit: cover; }
+        #status {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); padding: 15px 25px; border-radius: 30px;
+            font-size: 24px; font-weight: bold; text-align: center; border: 2px solid #00ff00;
+        }
+    </style>
+</head>
+<body>
+
+<video id="webcam" autoplay playsinline></video>
+<canvas id="output"></canvas>
+<div id="status">Gerakkan tanganmu...</div>
+
+<script>
+const video = document.getElementById('webcam');
+const canvasElement = document.getElementById('output');
+const canvasCtx = canvasElement.getContext('2d');
+const statusText = document.getElementById('status');
+
+let lastWord = "";
+
+// Fungsi Mengeluarkan Suara
+function speak(text) {
+    if (text !== lastWord) {
+        window.speechSynthesis.cancel(); // Hentikan suara sebelumnya
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'id-ID';
+        window.speechSynthesis.speak(msg);
+        lastWord = text;
+        statusText.innerText = text;
+        
+        // Reset kata setelah 3 detik agar bisa diulang
+        setTimeout(() => { lastWord = ""; }, 3000);
+    }
+}
+
+function onResults(results) {
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        for (const landmarks of results.multiHandLandmarks) {
+            // Logika Sederhana: Membaca posisi ujung jari
+            const jempol = landmarks[4].y;
+            const telunjuk = landmarks[8].y;
+            const tengah = landmarks[12].y;
+
+            // Contoh Isyarat:
+            // Jika telunjuk lebih tinggi dari jari lain (Angka 1 / Menunjuk)
+            if (telunjuk < jempol && telunjuk < tengah) {
+                speak("Halo, apa kabar?");
+            } 
+            // Jika telunjuk dan tengah naik (Simbol V / Peace)
+            else if (telunjuk < landmarks[6].y && tengah < landmarks[10].y) {
+                speak("Terima kasih");
+            }
+            // Jika kepalan tangan (semua jari di bawah)
+            else if (telunjuk > landmarks[6].y && jempol > landmarks[2].y) {
+                speak("Saya butuh bantuan");
+            }
+        }
+    }
+    canvasCtx.restore();
+}
+
+const hands = new Hands({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
+
+hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+});
+
+hands.onResults(onResults);
+
+const camera = new Camera(video, {
+    onFrame: async () => {
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
+        await hands.send({image: video});
+    },
+    width: 1280,
+    height: 720
+});
+camera.start();
+</script>
+</body>
+</html>
