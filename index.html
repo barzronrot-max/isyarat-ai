@@ -101,3 +101,27 @@ camera.start();
 </script>
 </body>
 </html>
+
+let audioReady = false;
+
+// Fungsi ini harus dipicu oleh klik jari kamu ke layar HP
+function initAudio() {
+    window.speechSynthesis.cancel();
+    const m = new SpeechSynthesisUtterance("Sistem suara aktif");
+    m.lang = 'id-ID';
+    window.speechSynthesis.speak(m);
+    audioReady = true;
+    outView.innerText = "Siap Mengeja! Silakan berisyarat.";
+}
+
+// Tambahkan ini di paling bawah script agar klik layar mengaktifkan suara
+document.body.addEventListener('click', initAudio, { once: true });
+
+function talk(t) {
+    if(!audioReady) return; // Jangan bunyi kalau belum diklik
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = 'id-ID';
+    u.rate = 1.1; // Sedikit lebih cepat agar natural
+    window.speechSynthesis.speak(u);
+}
